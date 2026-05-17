@@ -1,8 +1,10 @@
+# Improved Water Quality Assessment App (Full Replace Code)
+
+```python
 import streamlit as st
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-import seaborn as sns
 
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
@@ -15,9 +17,9 @@ from sklearn.metrics import (
     f1_score
 )
 
-# =========================================================
+# =====================================================
 # PAGE CONFIG
-# =========================================================
+# =====================================================
 
 st.set_page_config(
     page_title="Water Quality Assessment",
@@ -25,427 +27,369 @@ st.set_page_config(
     layout="wide"
 )
 
-# =========================================================
+# =====================================================
 # CUSTOM CSS
-# =========================================================
+# =====================================================
 
 st.markdown("""
 <style>
 
 .main-title {
-    text-align:center;
-    font-size:50px;
-    font-weight:bold;
-    color:#38bdf8;
+    text-align: center;
+    font-size: 48px;
+    font-weight: bold;
+    color: #38bdf8;
 }
 
 .sub-title {
-    text-align:center;
-    color:#94a3b8;
-    margin-bottom:30px;
-    font-size:18px;
+    text-align: center;
+    color: gray;
+    margin-bottom: 30px;
 }
 
-.result-good {
-    background-color:#14532d;
-    color:white;
-    padding:30px;
-    border-radius:18px;
-    border:2px solid #22c55e;
-    text-align:center;
+.result-safe {
+    background-color: #166534;
+    padding: 30px;
+    border-radius: 15px;
+    text-align: center;
+    color: white;
+    font-size: 24px;
+    font-weight: bold;
+    border: 3px solid #22c55e;
 }
 
-.result-bad {
-    background-color:#7f1d1d;
-    color:white;
-    padding:30px;
-    border-radius:18px;
-    border:2px solid #ef4444;
-    text-align:center;
-}
-
-.big-text {
-    font-size:40px;
-    font-weight:bold;
-}
-
-.small-text {
-    font-size:22px;
-    margin-top:10px;
+.result-danger {
+    background-color: #991b1b;
+    padding: 30px;
+    border-radius: 15px;
+    text-align: center;
+    color: white;
+    font-size: 24px;
+    font-weight: bold;
+    border: 3px solid #ef4444;
 }
 
 </style>
 """, unsafe_allow_html=True)
 
-# =========================================================
+# =====================================================
+# TITLE
+# =====================================================
+
+st.markdown('<div class="main-title">💧 Water Quality Assessment</div>', unsafe_allow_html=True)
+st.markdown('<div class="sub-title">AI System for Checking Drinking Water Quality</div>', unsafe_allow_html=True)
+
+# =====================================================
+# LOAD DATA
+# =====================================================
+
+@st.cache_data
+
+def load_data():
+    df = pd.read_csv("water_potability.csv")
+    return df
+
+try:
+    df = load_data()
+except:
+    st.error("water_potability.csv file not found")
+    st.stop()
+
+# =====================================================
 # FEATURES
-# =========================================================
+# =====================================================
 
 FEATURES = [
-    "ph",
-    "Hardness",
-    "Solids",
-    "Chloramines",
-    "Sulfate",
-    "Conductivity",
-    "Organic_carbon",
-    "Trihalomethanes",
-    "Turbidity"
+    'ph',
+    'Hardness',
+    'Solids',
+    'Chloramines',
+    'Sulfate',
+    'Conductivity',
+    'Organic_carbon',
+    'Trihalomethanes',
+    'Turbidity'
 ]
 
-TARGET = "Potability"
+TARGET = 'Potability'
 
-# =========================================================
-# LOAD DATA
-# =========================================================
+# =====================================================
+# PREPROCESSING
+# =====================================================
 
-@st.cache_resource
-def load_and_train():
+X = df[FEATURES]
+y = df[TARGET]
 
-    df = pd.read_csv("water_potability.csv")
+imputer = SimpleImputer(strategy='mean')
+X = imputer.fit_transform(X)
 
-    X = df[FEATURES]
-    y = df[TARGET]
+scaler = StandardScaler()
+X = scaler.fit_transform(X)
 
-    imputer = SimpleImputer(strategy="mean")
-    X = imputer.fit_transform(X)
-
-    scaler = StandardScaler()
-    X = scaler.fit_transform(X)
-
-    X_train, X_test, y_train, y_test = train_test_split(
-        X,
-        y,
-        test_size=0.2,
-        random_state=42
-    )
-
-    model = RandomForestClassifier(
-        n_estimators=100,
-        random_state=42
-    )
-
-    model.fit(X_train, y_train)
-
-    preds = model.predict(X_test)
-
-    metrics = {
-        "Accuracy": accuracy_score(y_test, preds),
-        "Precision": precision_score(y_test, preds),
-        "Recall": recall_score(y_test, preds),
-        "F1-Score": f1_score(y_test, preds)
-    }
-
-    return model, metrics, imputer, scaler
-
-
-model, metrics, imputer, scaler = load_and_train()
-
-# =========================================================
-# HEADER
-# =========================================================
-
-st.markdown(
-    '<div class="main-title">💧 Water Quality Assessment</div>',
-    unsafe_allow_html=True
+X_train, X_test, y_train, y_test = train_test_split(
+    X,
+    y,
+    test_size=0.2,
+    random_state=42
 )
 
-st.markdown(
-    '<div class="sub-title">AI System for Checking Drinking Water Quality</div>',
-    unsafe_allow_html=True
+# =====================================================
+# MODEL
+# =====================================================
+
+model = RandomForestClassifier(
+    n_estimators=100,
+    random_state=42
 )
 
-# =========================================================
-# TABS
-# =========================================================
-
-tab1, tab2, tab3 = st.tabs([
-    "🔍 Predict Water Quality",
-    "📂 Upload CSV File",
-    "📊 Model Information"
-])
-
-# =========================================================
-# TAB 1
-# =========================================================
-
-with tab1:
-
-    st.subheader("Enter Water Parameters")
-
-    col1, col2, col3 = st.columns(3)
-
-    with col1:
-        ph = st.number_input("pH", 0.0, 14.0, 7.0)
-        hardness = st.number_input("Hardness", 0.0, 500.0, 195.0)
-        solids = st.number_input("Solids", 0.0, 60000.0, 22000.0)
-
-    with col2:
-        chloramines = st.number_input("Chloramines", 0.0, 15.0, 7.0)
-        sulfate = st.number_input("Sulfate", 0.0, 500.0, 333.0)
-        conductivity = st.number_input("Conductivity", 0.0, 900.0, 426.0)
-
-    with col3:
-        organic_carbon = st.number_input("Organic Carbon", 0.0, 30.0, 14.0)
-        trihalomethanes = st.number_input("Trihalomethanes", 0.0, 130.0, 66.0)
-        turbidity = st.number_input("Turbidity", 0.0, 10.0, 4.0)
-
-    if st.button("🔍 Predict Water Quality", use_container_width=True):
-
-        row = np.array([[
-            ph,
-            hardness,
-            solids,
-            chloramines,
-            sulfate,
-            conductivity,
-            organic_carbon,
-            trihalomethanes,
-            turbidity
-        ]])
-
-        row = imputer.transform(row)
-        row = scaler.transform(row)
-
-        prediction = model.predict(row)[0]
-        probability = model.predict_proba(row)[0]
-
-        confidence = probability[int(prediction)] * 100
-
-        st.divider()
-
-        if prediction == 1:
-
-            st.markdown(f"""
-            <div class="result-good">
-                <div class="big-text">✅ SAFE TO DRINK</div>
-                <div class="small-text">
-                    Confidence Level: {confidence:.2f}%
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-
-        else:
-
-            st.markdown(f"""
-            <div class="result-bad">
-                <div class="big-text">⚠️ NOT SAFE TO DRINK</div>
-                <div class="small-text">
-                    Confidence Level: {confidence:.2f}%
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-
-        st.divider()
-
-        # =====================================================
-        # STATUS TABLE
-        # =====================================================
-
-        st.subheader("Water Quality Status")
-
-        status_df = pd.DataFrame({
-
-            "Parameter": [
-                "pH",
-                "Hardness",
-                "Solids",
-                "Chloramines",
-                "Sulfate",
-                "Conductivity",
-                "Organic Carbon",
-                "Trihalomethanes",
-                "Turbidity"
-            ],
-
-            "Value": [
-                ph,
-                hardness,
-                solids,
-                chloramines,
-                sulfate,
-                conductivity,
-                organic_carbon,
-                trihalomethanes,
-                turbidity
-            ],
+model.fit(X_train, y_train)
+
+# =====================================================
+# MODEL METRICS
+# =====================================================
+
+pred_test = model.predict(X_test)
+
+accuracy = accuracy_score(y_test, pred_test)
+precision = precision_score(y_test, pred_test)
+recall = recall_score(y_test, pred_test)
+f1 = f1_score(y_test, pred_test)
+
+# =====================================================
+# SIDEBAR INPUT
+# =====================================================
+
+st.sidebar.header("Input Water Parameters")
+
+ph = st.sidebar.number_input("pH", 0.0, 14.0, 7.0)
+hardness = st.sidebar.number_input("Hardness", 0.0, 500.0, 195.0)
+solids = st.sidebar.number_input("Solids", 0.0, 50000.0, 22000.0)
+chloramines = st.sidebar.number_input("Chloramines", 0.0, 15.0, 7.0)
+sulfate = st.sidebar.number_input("Sulfate", 0.0, 500.0, 333.0)
+conductivity = st.sidebar.number_input("Conductivity", 0.0, 1000.0, 426.0)
+organic_carbon = st.sidebar.number_input("Organic Carbon", 0.0, 30.0, 14.0)
+trihalomethanes = st.sidebar.number_input("Trihalomethanes", 0.0, 150.0, 66.0)
+turbidity = st.sidebar.number_input("Turbidity", 0.0, 10.0, 4.0)
+
+input_data = {
+    'pH': ph,
+    'Hardness': hardness,
+    'Solids': solids,
+    'Chloramines': chloramines,
+    'Sulfate': sulfate,
+    'Conductivity': conductivity,
+    'Organic Carbon': organic_carbon,
+    'Trihalomethanes': trihalomethanes,
+    'Turbidity': turbidity
+}
+
+# =====================================================
+# PREDICTION
+# =====================================================
+
+input_array = np.array([[
+    ph,
+    hardness,
+    solids,
+    chloramines,
+    sulfate,
+    conductivity,
+    organic_carbon,
+    trihalomethanes,
+    turbidity
+]])
+
+input_array = scaler.transform(input_array)
+
+prediction = model.predict(input_array)[0]
+probability = model.predict_proba(input_array)[0]
+confidence = max(probability) * 100
+
+# =====================================================
+# RESULT DISPLAY
+# =====================================================
+
+if prediction == 1:
+    st.markdown(f'''
+    <div class="result-safe">
+        ✅ SAFE TO DRINK<br><br>
+        Confidence Level: {confidence:.2f}%
+    </div>
+    ''', unsafe_allow_html=True)
+else:
+    st.markdown(f'''
+    <div class="result-danger">
+        ⚠️ NOT SAFE TO DRINK<br><br>
+        Confidence Level: {confidence:.2f}%
+    </div>
+    ''', unsafe_allow_html=True)
+
+# =====================================================
+# WATER QUALITY TABLE
+# =====================================================
+
+st.markdown("---")
+st.subheader("📋 Water Quality Status")
+
+normal_ranges = {
+    "pH": (6.5, 8.5),
+    "Hardness": (50, 500),
+    "Solids": (500, 50000),
+    "Chloramines": (0, 10),
+    "Sulfate": (200, 400),
+    "Conductivity": (200, 800),
+    "Organic Carbon": (5, 20),
+    "Trihalomethanes": (0, 100),
+    "Turbidity": (0, 5)
+}
+
+status_data = []
 
-            "Status": [
-                "Normal" if 6.5 <= ph <= 8.5 else "Abnormal",
-                "Normal" if hardness <= 300 else "High",
-                "Normal" if solids <= 30000 else "High",
-                "Normal" if chloramines <= 10 else "High",
-                "Normal" if sulfate <= 400 else "High",
-                "Normal" if conductivity <= 500 else "High",
-                "Normal" if organic_carbon <= 20 else "High",
-                "Normal" if trihalomethanes <= 100 else "High",
-                "Normal" if turbidity <= 5 else "High"
-            ]
-        })
+for parameter, value in input_data.items():
 
-        st.dataframe(
-            status_df,
-            use_container_width=True
-        )
+    minimum, maximum = normal_ranges[parameter]
 
-        # =====================================================
-        # STATUS GRAPH
-        # =====================================================
+    if minimum <= value <= maximum:
+        status = "✅ Normal"
+        color = "green"
+    else:
+        status = "⚠️ Abnormal"
+        color = "red"
 
-        st.subheader("Water Parameter Status")
-
-        fig, ax = plt.subplots(figsize=(10,4))
-
-        colors = [
-            "#22c55e" if s == "Normal" else "#ef4444"
-            for s in status_df["Status"]
-        ]
-
-        ax.bar(
-            status_df["Parameter"],
-            [1] * len(status_df),
-            color=colors
-        )
-
-        ax.set_yticks([])
-
-        ax.set_title("Green = Normal | Red = Abnormal")
-
-        plt.xticks(rotation=20)
-
-        st.pyplot(fig)
-
-# =========================================================
-# TAB 2
-# =========================================================
-
-with tab2:
-
-    st.subheader("Upload CSV File")
-
-    st.info("""
-CSV file must contain these columns:
-
-- ph
-- Hardness
-- Solids
-- Chloramines
-- Sulfate
-- Conductivity
-- Organic_carbon
-- Trihalomethanes
-- Turbidity
-""")
-
-    template = pd.DataFrame(columns=FEATURES)
-
-    csv = template.to_csv(index=False).encode("utf-8")
-
-    st.download_button(
-        "⬇ Download CSV Template",
-        csv,
-        "water_template.csv",
-        "text/csv"
-    )
-
-    uploaded_file = st.file_uploader(
-        "Upload CSV File",
-        type=["csv"]
-    )
-
-    if uploaded_file is not None:
-
-        df = pd.read_csv(uploaded_file)
-
-        st.subheader("Uploaded Data")
-
-        st.dataframe(df)
-
-        if st.button("🚀 Predict CSV File", use_container_width=True):
-
-            X = df[FEATURES]
-
-            X = imputer.transform(X)
-            X = scaler.transform(X)
-
-            preds = model.predict(X)
-
-            probs = model.predict_proba(X)
-
-            results = []
-
-            for i in range(len(preds)):
-
-                results.append({
-
-                    "Prediction":
-                        "SAFE" if preds[i] == 1 else "NOT SAFE",
-
-                    "Confidence":
-                        f"{max(probs[i])*100:.2f}%"
-
-                })
-
-            result_df = pd.concat([
-                df,
-                pd.DataFrame(results)
-            ], axis=1)
-
-            st.subheader("Prediction Results")
-
-            st.dataframe(result_df)
-
-            csv_result = result_df.to_csv(index=False).encode("utf-8")
-
-            st.download_button(
-                "⬇ Download Results",
-                csv_result,
-                "prediction_results.csv",
-                "text/csv"
-            )
-
-# =========================================================
-# TAB 3
-# =========================================================
-
-with tab3:
-
-    st.subheader("Model Performance")
-
-    metric_df = pd.DataFrame({
-        "Metric": list(metrics.keys()),
-        "Value": list(metrics.values())
+    status_data.append({
+        "Parameter": parameter,
+        "Value": value,
+        "Normal Range": f"{minimum} - {maximum}",
+        "Status": status,
+        "Color": color
     })
 
-    st.dataframe(metric_df, use_container_width=True)
+status_df = pd.DataFrame(status_data)
 
-    fig, ax = plt.subplots(figsize=(7,4))
+st.dataframe(
+    status_df[["Parameter", "Value", "Normal Range", "Status"]],
+    use_container_width=True,
+    hide_index=True
+)
 
-    sns.barplot(
-        x="Metric",
-        y="Value",
-        data=metric_df,
-        palette="Blues",
-        ax=ax
+# =====================================================
+# GRAPH
+# =====================================================
+
+st.markdown("### 📈 Water Parameter Overview")
+
+fig, ax = plt.subplots(figsize=(10, 5))
+
+colors = status_df["Color"]
+
+bars = ax.bar(
+    status_df["Parameter"],
+    status_df["Value"],
+    color=colors
+)
+
+for bar in bars:
+    height = bar.get_height()
+
+    ax.text(
+        bar.get_x() + bar.get_width()/2,
+        height,
+        f'{height:.1f}',
+        ha='center',
+        va='bottom'
     )
 
-    ax.set_ylim(0,1)
+plt.xticks(rotation=15)
+plt.title("Water Parameters")
+plt.ylabel("Values")
 
-    st.pyplot(fig)
+st.pyplot(fig)
 
-    st.divider()
+# =====================================================
+# CSV UPLOAD SECTION
+# =====================================================
 
-    st.subheader("About This Project")
+st.markdown("---")
+st.subheader("📂 Upload CSV File")
 
-    st.write("""
-This project uses Artificial Intelligence and Machine Learning
-to determine whether water is safe for drinking.
+uploaded_file = st.file_uploader(
+    "Upload water quality CSV file",
+    type=["csv"]
+)
 
-Model Used:
-- Random Forest Classifier
+if uploaded_file is not None:
 
-Dataset:
-- Kaggle Water Potability Dataset
+    uploaded_df = pd.read_csv(uploaded_file)
 
-Developed for Computer Engineering Senior Project.
-""")
+    st.write("### Uploaded Data")
+    st.dataframe(uploaded_df.head())
+
+    try:
+
+        upload_X = uploaded_df[FEATURES]
+
+        upload_X = imputer.transform(upload_X)
+        upload_X = scaler.transform(upload_X)
+
+        predictions = model.predict(upload_X)
+        probabilities = model.predict_proba(upload_X)
+
+        uploaded_df['Prediction'] = [
+            'SAFE' if p == 1 else 'NOT SAFE'
+            for p in predictions
+        ]
+
+        uploaded_df['Confidence'] = [
+            round(max(prob) * 100, 2)
+            for prob in probabilities
+        ]
+
+        st.write("### Prediction Results")
+
+        st.dataframe(uploaded_df)
+
+        csv = uploaded_df.to_csv(index=False).encode('utf-8')
+
+        st.download_button(
+            label="⬇ Download Results",
+            data=csv,
+            file_name='prediction_results.csv',
+            mime='text/csv'
+        )
+
+    except Exception as e:
+        st.error(f"Error: {e}")
+
+# =====================================================
+# MODEL PERFORMANCE
+# =====================================================
+
+st.markdown("---")
+st.subheader("🤖 Model Performance")
+
+metrics_df = pd.DataFrame({
+    "Metric": [
+        "Accuracy",
+        "Precision",
+        "Recall",
+        "F1-Score"
+    ],
+    "Score": [
+        accuracy,
+        precision,
+        recall,
+        f1
+    ]
+})
+
+st.dataframe(metrics_df, use_container_width=True, hide_index=True)
+
+# =====================================================
+# FOOTER
+# =====================================================
+
+st.markdown("---")
+
+st.caption("Developed using Streamlit and Machine Learning")
+
+```
